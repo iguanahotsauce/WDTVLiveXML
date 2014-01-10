@@ -6,10 +6,13 @@
 	Updated: 01/09/2014
 */
 
-class movieCoverArtAPI{
+class getPosterAPI{
 	
 	// Version
 	private static $movieCoverArtAPIVersion = '0.1 Alpha';
+	
+	// Singleton instance.
+	private static $instance;
 	
 	// This is the search URL for http://www.freecovers.net/
 	private $freecoversSearchURL = 'http://freecovers.net/search.php?search=';
@@ -89,6 +92,18 @@ class movieCoverArtAPI{
 		')'
 	);
 	
+	public static function GetInstance(){
+    	if (!isset(self::$instance)) {
+			$c = __CLASS__;
+			self::$instance = new $c;
+		}
+		return self::$instance;
+	}
+	
+	public function getTypes() {
+		return $this->types;
+	}
+	
 	// Returns the data before the given $needle, reverse of strstr() 
 	public function rstrstr($haystack,$needle, $start=0) {
 	    return substr($haystack, $start,strpos($haystack, $needle));
@@ -97,9 +112,9 @@ class movieCoverArtAPI{
 	// Gets the URLs that we need to cURL
 	public function getURLs($name, $type) {
 		$urls = array();
-	
+		$name = strtoupper($name);
 		// Get the alternative name so we can add the URL for that name as well
-		$alternative_name = alternative_name($name);
+		$alternative_name = $this->getAlternativeName($name);
 		//Add the URLs to the array so we can get the HTML from them
 		$urls[] = 'http://www.freecovers.net/search.php?search='.urlencode($name).'&cat='.$type;
 		$urls[] = 'http://www.freecovers.net/search.php?search='.urlencode($alternative_name).'&cat='.$type;
@@ -121,9 +136,9 @@ class movieCoverArtAPI{
 			    $number = (integer)str_replace('SEASON','',$number[0]);
 			    // Get the alternate format for the number from the dictionaries array
 			    // Example: 1 becomes First
-			    $alternative_format = $dictionary[$number];
+			    $alternative_format = $this->dictionary[$number];
 			    // Use str_replace on the original name to create the new alternative name with 'The Complete Nth Season'
-			    $alternative_name = str_replace('SEASON '.$number, 'THE COMPLETE '.$alternative_format.' SEASON', $number);
+			    $alternative_name = str_replace('SEASON '.$number, 'THE COMPLETE '.$alternative_format.' SEASON', $name);
 			}
 		}
 		// Check if 'Series' is in the name so that we can make the alternate name 'The Complete Nth Series'
@@ -133,7 +148,7 @@ class movieCoverArtAPI{
 			    $number = (integer)str_replace('SERIES','',$number[0]);
 			    // Get the alternate format for the number from the dictionaries array
 			    // Example: 1 becomes First
-			    $alternative_format = $dictionary[$number];
+			    $alternative_format = $this->dictionary[$number];
 			    // Use str_replace on the original name to create the new alternative name with "The Complete Nth Series'
 			    $alternative_name = str_replace('SERIES '.$number, 'THE COMPLETE '.$alternative_format.' SERIES', $number);
 			}
@@ -147,7 +162,7 @@ class movieCoverArtAPI{
 					$number = str_replace(array('THE COMPLETE','SEASON'), '', $number[0]);
 					// Get the number format for the number from the dictionaries array
 					// Example: First becomes 1
-					$alternative_format = array_search($number, $dictionary);
+					$alternative_format = array_search($number, $this->dictionary);
 					// Use str_replace on the original name to create the new alternatice name with 'Season N'
 					$alternative_name = 'SEASON '.$alternative_format;
 				}
@@ -159,7 +174,7 @@ class movieCoverArtAPI{
 					$number = str_replace(array('THE COMPLETE','SERIES'), '', $number[0]);
 					// Get the number format for the number from the dictionaries array
 					// Example: First becomes 1
-					$alternative_format = array_search($number, $dictionary);
+					$alternative_format = array_search($number, $this->dictionary);
 					// Use str_replace on the original name to create the new alternative name with 'Series N'
 					$alternative_name = 'SERIES '.$alternative_format;
 				}
@@ -172,18 +187,18 @@ class movieCoverArtAPI{
 	// Gets the HTML from the given URL with cURL
 	public function getHTML($url) {
 		// cURL the URL to get the HTML
-		$page = curl($url);
+		$page = $this->curl($url);
 		// Call the scrape_between function to get rid of everything that's not between '<div id=\"maincontent\">' and '<td align=\"right\" valign=\"top\"></td>'
 		// Then remove all the unwanted HTML from the start and the end of $page with substr
-		$data = substr(substr(trim(scrape_between($scraped_page, "<div id=\"maincontent\">", "<td align=\"right\" valign=\"top\"></td>")), 430, -1), 0, -134);
-	    
+		$data = substr(substr(trim($this->scrape_between($page, "<div id=\"maincontent\">", "<td align=\"right\" valign=\"top\"></td>")), 430, -1), 0, -134);
+
 	    return $data;
 	}
 	
 	// Takes the HTML and converts it into an array, making each row into an element
 	public function getRows($data) {
 		/// Remove all the unneccessary tags from the HTML
-		$data = str_replace($removeFromHTML, '', $data);
+		$data = str_replace($this->removeFromHTML, '', $data);
 		// Explode on the '</tr>' tags so we can put each row into an array
 		$rows = explode('</tr>', $data);
 		$rowsArray = array();
@@ -191,12 +206,12 @@ class movieCoverArtAPI{
 		foreach($rows as &$row) {
 			$row = trim(strstr($row, '>'));
 			$row = substr($row, 1, -1).'>';
-			$row = removeFirstElement($row);
+			$row = $this->removeFirstElement($row);
 			// If $i % 4 == 0 then we are on a row that contains the name of the image
 			// Remove the HTML from before the name then use rstrstr to get all the html before the first '<' which gives us the name
 			if($i  % 4 == 0) {
-				$row = removeFirstElement($row);
-				$row = rstrstr($row,'<');
+				$row = $this->removeFirstElement($row);
+				$row = $this->rstrstr($row,'<');
 			}
 			// If we're not looking a row with a name in it then add '<td>' to the front of the row becasue we stripped it off earlier
 			else {
@@ -215,6 +230,8 @@ class movieCoverArtAPI{
 				unset($rowsArray[$j-1]);
 			}
 		}
+		
+		return $rowsArray;
 	}
 	
 	// Takes the array of all of the rows and converts it into an array with the show name as the key. Each element contains the name and image link for each image
@@ -234,7 +251,7 @@ class movieCoverArtAPI{
 			// Loop through each of the new row elements in order to find the name and the covers that are in that element
 			foreach($row as &$row) {
 				// Remove the '<a>' tags from each element because they are not needed
-				$row = str_replace($removeFromRows,'',$row);
+				$row = str_replace($this->removeFromRows,'',$row);
 				// Explode each element on '>' to get the specific data
 				$row = explode('>',$row);
 				// If the length of the new $row array is one then that is the name of the show
@@ -266,7 +283,7 @@ class movieCoverArtAPI{
 	}
 	
 	// Gets the best match from the elements array
-	public function getBestMatch($data, $name) {
+	public function getBestMatch($data, $name, $best_match) {
 		// Get the array keys which are the names of the images
 		$keys = array_keys($data);
 		$i=0;
@@ -276,7 +293,7 @@ class movieCoverArtAPI{
 			// If there are parenthesis in the name then remove everything inside of them so that we can remove the parenthesis as well
 	        $string = preg_replace('/\([^)]*\)/', '', $keys[$i]);
 	        // Remove all of the Revision numbers and dates from the image name
-	        $string = str_replace($remove, '', $string);
+	        $string = str_replace($this->removeFromName, '', $string);
 	        // Use the function simalar_text to compare the user string with the image name in order to see how close of a match it is
 	        similar_text(strtoupper($string), strtoupper($name), $percent);
 	        $front_cover = false;

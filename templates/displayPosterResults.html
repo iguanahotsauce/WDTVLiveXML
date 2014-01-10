@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+		<title>Get Show Posters</title>
+		<link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+		<link href="css/getPoster.css" rel="stylesheet" media="screen">
+		<script src="js/jquery-1.10.2.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/bootstrap.min.js" type="text/javascript" charset="utf-8"></script>
+	</head>
+	<body>
+		<div id="header">
+			<h1>Get Show Poster</h1>
+		</div>
+		<div id="main">
+			<div class="title">
+				<h5>Title: </h5>
+				<span><?php echo $bestMatchArray['key']; ?>
+			</div>
+			<div class="percent">
+				<h5>Percent Match: </h5>
+				<span><?php echo $bestMatchArray['percent']; ?>
+			</div>
+			<div class="image">
+				<div id="original_image">
+					<h3>Original Image</h3>
+					<img src="<?php echo $bestMatchArray['url']; ?>">
+				</div>
+				<div id="cropped_image">
+					<h3>Cropped Image</h3>
+					<img src="<?php echo $image; ?>">
+				</div>
+			</div>
+			<a href="/getPosterExample.php" class="btn btn-primary back-button">Back</a>
+		</div>
+	</body>
+</html>
+				

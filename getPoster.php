@@ -45,7 +45,7 @@ if($_POST) {
 		20 => 'twentyieth'
 	);
 	$scrape_urls = array();
-		$get_type = $_POST['type'];
+	$get_type = $_POST['type'];
 	$search_string = strtoupper($_POST['show_name']);
 	$scrape_urls[] = 'http://www.freecovers.net/search.php?search='.str_replace(' ','+',$search_string).'&cat='.$get_type;
 	if(strstr($search_string, 'SEASON')) {

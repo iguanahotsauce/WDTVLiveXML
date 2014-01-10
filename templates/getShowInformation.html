@@ -1,0 +1,36 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+		<title>Get Show Posters</title>
+		<link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+		<link href="css/getPoster.css" rel="stylesheet" media="screen">
+		<script src="js/jquery-1.10.2.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/bootstrap.min.js" type="text/javascript" charset="utf-8"></script>
+	</head>
+	<body>
+		<div id="header">
+			<h1>Get Show Poster</h1>
+		</div>
+		<div id="main">
+			<div id="inputs">
+				<form autocomplete="on" method="post" id="get_show_name">
+					<div class="input_field">
+						<label>Name: </label>
+		 				<input type="text" name="show_name" class="field"><br>
+					</div>
+					<div class="input_field">
+						<label>Type: </label>
+		 				<select name="type">
+		 					<?php foreach($types as $type): ?>
+		 						<option value="<?php echo $type; ?>" <?php echo ($type == 19) ? 'selected' : ''; ?>><?php echo array_search($type, $types); ?></option> 
+		 					<?php endforeach; ?>
+		 				</select>
+					</div>
+					<button class="btn btn-primary submit-button" type="submit">Submit</button>
+				</form>
+			</div>
+		</div>
+	</body>
+</html>
