@@ -1,0 +1,12 @@
+getPoster.rm
+===========
+
+This application takes the name of a Movie or TV show
+
+It then runs a search from freecovers.net and pulls back all of the results for that string on the first page
+
+It parses all of the results and compares the names to the user inputted string
+
+Once it has iterated through all of the results it returns the closest match and the image that is associated with that math
+
+It also crops the image to be 282px X 400px so it can be used as an image for the WDTV Live
