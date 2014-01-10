@@ -1,9 +1,9 @@
 <?php
 /*
-	Movie/TV Cover Art API
-	http://eve-helper.com/getPoster.php
+	Show Cover Art API
+	http://eve-helper.com/getPosterExample.php
 	Alex Beebe (iguanahotsauce2009@gmail.com)
-	Updated: 01/09/2014
+	Updated: 01/10/2014
 */
 
 class getPosterAPI{
