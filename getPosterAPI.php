@@ -6,7 +6,12 @@
 	Updated: 01/10/2014
 */
 
-class getPosterAPI{
+	error_reporting(E_ALL);
+ 	ini_set('display_errors', 1);
+
+ include_once('databaseConnection.php');
+
+class getPosterAPI {
 	
 	// Version
 	private static $movieCoverArtAPIVersion = '0.1 Alpha';
@@ -38,6 +43,21 @@ class getPosterAPI{
 		'TV Series' => 19,
 		'Wii' => 17,
 		'Xbox 360' => 12
+	);
+	
+	public $widths = array(
+		19 => array(
+			'width' => 282,
+			'height' => 400
+			),
+		20 => array(
+			'width' => 344,
+			'height' => 400
+			),
+		21 => array(
+			'width' => 343,
+			'height' => 400
+		)	
 	);
 	
 	// Dictionary to convert season number to complete season to check for a better match
@@ -93,6 +113,7 @@ class getPosterAPI{
 	);
 	
 	public static function GetInstance(){
+
     	if (!isset(self::$instance)) {
 			$c = __CLASS__;
 			self::$instance = new $c;
@@ -100,6 +121,149 @@ class getPosterAPI{
 		return self::$instance;
 	}
 	
+	public function addUser($data) {
+		// Create a new databaseConnection Instance in order to get the database connection info
+		$databaseConnection = databaseConnection::getInstance();
+		// Get the databse connection info
+		$databaseInfo = $databaseConnection->getDatabaseInfo();
+		// Connect to the database with mysqli
+		$db = new mysqli($databaseInfo['host'], $databaseInfo['username'], $databaseInfo['password'], $databaseInfo['db']);
+		
+		$ip = $db->real_escape_string($data['ip']);
+		$useragent = $db->real_escape_string($data['useragent']);
+		$search_string = $db->real_escape_string($data['search_string']);
+
+		// Insert the new user into the Users table
+		$query = "
+			INSERT INTO
+				users
+			(
+				ip,
+				useragent,
+				search_string
+			)
+			VALUES (
+				'$ip',
+				'$useragent',
+				'$search_string'
+			)
+		";
+		// Run the query
+		$db->query($query);
+	}
+	
+	// Creates an md5 hash of the search string and the alternative search string so they can be stored in a database for caching purposes
+	public function createHash($name) {
+		// Create a hash for the alternative name as well to check and see if that hash is already stored in the database
+		$alternative_name = $this->getAlternativeName($name);
+		// Replace everything but numbers and letters
+		// Set the name to uppercase
+		$name = strtoupper(preg_replace('/[^A-Za-z0-9]/','',$name));
+		// Create a array with an md5 hash for both the name and the alternate name
+		$hashArray = array(
+			md5($name),
+			md5($alternative_name)
+		);
+		
+		return $hashArray;
+	}
+
+	// Checks the database to see if the requested hash has been stored already
+	public function checkCache($hash) {
+		// Create a new databaseConnection Instance in order to get the database connection info
+		$databaseConnection = databaseConnection::getInstance();
+		// Get the databse connection info
+		$databaseInfo = $databaseConnection->getDatabaseInfo();
+		// Connect to the database with mysqli
+		$db = new mysqli($databaseInfo['host'], $databaseInfo['username'], $databaseInfo['password'], $databaseInfo['db']);
+
+		$hash = $db->real_escape_string($hash);
+		// Query the database for the given hash to see if there is any stored data
+		$query = "
+			SELECT
+				*
+			FROM
+				search_results
+			WHERE
+				hash = '$hash'
+			";
+		// Get the results of the query
+		$results = $db->query($query);
+		// Get the number of rows from the results of the query so we can check to see if there was a match
+		$row = $results->num_rows;
+
+		$cached_data = array();
+		// If the query did return a row from the databse then set the cached_data array
+		if($row != 0) {
+			// Get the returned data from the query
+			$info = $results->fetch_array();
+			// Set the information in the cached_data array
+			$cached_data = array(
+				'name' => $info['best_match_name'],
+				'image' => 'images/'.$info['image_name'].'.jpg',
+				'url' => $info['best_match_url'],
+				'percent' => $info['percent']
+			);
+		}
+		else {
+			// If the query did not return anything from the database then we need to set 'name' in the cached_data array to null
+			// so that we know we need to get the data from the site
+			$cached_data = array('name' => null);
+		}
+
+		return $cached_data;	
+	}
+
+
+	// Adds the result data to the database if it doesn't already exist for the search string
+	public function addData($data) {
+		// Create a new databaseConnection Instance in order to get the database connection info
+		$databaseConnection = databaseConnection::getInstance();
+		// Get the databse connection info
+		$databaseInfo = $databaseConnection->getDatabaseInfo();
+		// Connect to the database with mysqli
+		$db = new mysqli($databaseInfo['host'], $databaseInfo['username'], $databaseInfo['password'], $databaseInfo['db']);
+
+		$hash = $db->real_escape_string($data['hash']);
+		$name = $db->real_escape_string($data['best_match_name']);
+		$url = $db->real_escape_string($data['best_match_url']);
+		$image_name = $db->real_escape_string($data['image_name']);
+		$useragent = $db->real_escape_string($data['useragent']);
+		$ip = $db->real_escape_string($data['ip']);
+		$type = $db->real_escape_string($data['type']);
+		$percent = $db->real_escape_string($data['percent']);
+
+		// Insert the new hash into the search_results table
+		$query = "
+			INSERT INTO
+				search_results
+			(
+				hash,
+				best_match_name,
+				best_match_url,
+				image_name,
+				insert_useragent,
+				insert_ip,
+				type,
+				percent
+			)
+			VALUES (
+				'$hash',
+				'$name',
+				'$url',
+				'$image_name',
+				'$useragent',
+				'$ip',
+				'$type',
+				'$percent'
+			)
+		";
+		// Run the query
+		$db->query($query);
+	}
+
+	
+	// This returns they types array so that it can be used in the demo
 	public function getTypes() {
 		return $this->types;
 	}
@@ -140,6 +304,9 @@ class getPosterAPI{
 			    // Use str_replace on the original name to create the new alternative name with 'The Complete Nth Season'
 			    $alternative_name = str_replace('SEASON '.$number, 'THE COMPLETE '.$alternative_format.' SEASON', $name);
 			}
+			else {
+				$alternative_name = $name;
+			}
 		}
 		// Check if 'Series' is in the name so that we can make the alternate name 'The Complete Nth Series'
 		else if(strstr($name, 'SERIES')) {
@@ -151,6 +318,9 @@ class getPosterAPI{
 			    $alternative_format = $this->dictionary[$number];
 			    // Use str_replace on the original name to create the new alternative name with "The Complete Nth Series'
 			    $alternative_name = str_replace('SERIES '.$number, 'THE COMPLETE '.$alternative_format.' SERIES', $number);
+			}
+			else {
+				$alternative_name = $name;
 			}
 		}
 		// Check if 'The Complete' is in the name so that we can make the alternative name
@@ -166,6 +336,9 @@ class getPosterAPI{
 					// Use str_replace on the original name to create the new alternatice name with 'Season N'
 					$alternative_name = 'SEASON '.$alternative_format;
 				}
+				else {
+					$alternative_name = $name;
+				}
 			}
 			// Check if 'Series' is in the name so that we can make the alternative name 'Series N'
 			else if(strstr($name, 'SERIES')) {
@@ -178,9 +351,20 @@ class getPosterAPI{
 					// Use str_replace on the original name to create the new alternative name with 'Series N'
 					$alternative_name = 'SERIES '.$alternative_format;
 				}
+				else {
+					$alternative_name = $name;
+				}
+			}
+			else {
+				$alternative_name = $name;
 			}
 		}
+		else {
+			$alternative_name = $name;
+		}
 		
+		$alternative_name = str_replace(' ', '', $alternative_name);
+
 		return $alternative_name;
 	}
 	
@@ -320,8 +504,10 @@ class getPosterAPI{
 	
 	// Takes a cover art image and crops it to be only the front of the cover art
 	public function createImage($url, $name) {
-		// Create the path name for the destination image
-		$dest_image = 'images/'.str_replace(' ', '_', $name).'.jpg';
+		// Remove all characters besides letters and numbers
+		$image_name = strtoupper(preg_replace('/[^A-Za-z0-9]/','',$name));
+		// Create the location for the new image
+		$dest_image = 'images/'.$image_name.'.jpg';
 		// Use the imagecreatefromjepg() function to set the $orig_img variable to the image
 		$org_img = imagecreatefromjpeg($url);
 		// Get the starting point for the image based off of the width of the image so that the cropped image size is 282px X 400px
@@ -335,7 +521,7 @@ class getPosterAPI{
 		// Destroy $image because it is no longer needed
 		imagedestroy($image);
 		
-		return $dest_image;
+		return $image_name;
 	}
 	
 	// Site Scraper by Jacob Ward
