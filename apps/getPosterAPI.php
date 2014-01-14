@@ -6,10 +6,7 @@
 	Updated: 01/10/2014
 */
 
-	error_reporting(E_ALL);
- 	ini_set('display_errors', 1);
-
- include_once('databaseConnection.php');
+include_once('databaseConnection.php');
 
 class getPosterAPI {
 	
@@ -121,6 +118,34 @@ class getPosterAPI {
 		return self::$instance;
 	}
 	
+	public function addpageView($ip, $useragent) {
+		// Create a new databaseConnection Instance in order to get the database connection info
+		$databaseConnection = databaseConnection::getInstance();
+		// Get the databse connection info
+		$databaseInfo = $databaseConnection->getDatabaseInfo();
+		// Connect to the database with mysqli
+		$db = new mysqli($databaseInfo['host'], $databaseInfo['username'], $databaseInfo['password'], $databaseInfo['db']);
+		
+		$ip = $db->real_escape_string($ip);
+		$useragent = $db->real_escape_string($useragent);
+
+		// Insert the new user into the Users table
+		$query = "
+			INSERT INTO
+				site_hits
+			(
+				ip,
+				useragent
+			)
+			VALUES (
+				'$ip',
+				'$useragent'
+			)
+		";
+		// Run the query
+		$db->query($query);
+	}
+	
 	public function addUser($data) {
 		// Create a new databaseConnection Instance in order to get the database connection info
 		$databaseConnection = databaseConnection::getInstance();
@@ -132,6 +157,7 @@ class getPosterAPI {
 		$ip = $db->real_escape_string($data['ip']);
 		$useragent = $db->real_escape_string($data['useragent']);
 		$search_string = $db->real_escape_string($data['search_string']);
+		$type = $db->real_escape_string($data['type']);
 
 		// Insert the new user into the Users table
 		$query = "
@@ -140,12 +166,14 @@ class getPosterAPI {
 			(
 				ip,
 				useragent,
-				search_string
+				search_string,
+				type
 			)
 			VALUES (
 				'$ip',
 				'$useragent',
-				'$search_string'
+				'$search_string',
+				'$type'
 			)
 		";
 		// Run the query
@@ -261,7 +289,46 @@ class getPosterAPI {
 		// Run the query
 		$db->query($query);
 	}
+	
+	public function getSeasons($name) {
+		// Create a new databaseConnection Instance in order to get the database connection info
+		$databaseConnection = databaseConnection::getInstance();
+		// Get the databse connection info
+		$APIKeys = $databaseConnection->getAPIKeys();
+		
+		$json = file_get_contents('https://api.themoviedb.org/3/search/tv?api_key='.$APIKeys['moviedb'].'&query='.urlencode($name));
+		
+		$search_array = get_object_vars(json_decode($json));
+		
+		$id = get_object_vars($search_array['results'][0]);
+		
+		$id = $id['id'];
+		
+		$json = file_get_contents('https://api.themoviedb.org/3/tv/'.$id.'?api_key='.$APIKeys['moviedb']);
+		
+		$show_array = get_object_vars(json_decode($json));
+		
+		$seasons = count($show_array['seasons']);
+		
+		$name = $show_array['name'];
+		
+		$return_values = array(
+			'name' => $name,
+			'seasons' => $seasons
+		);
+		
+		return $return_values;
+	}
+	
+	public function checkName($name) {
+		$get_seasons = true;
+	
+		if(strstr($name, 'SEASON') || strstr($name, 'SERIES')) {
+			$get_seasons = false;
+		}
 
+		return $get_seasons;
+	}
 	
 	// This returns they types array so that it can be used in the demo
 	public function getTypes() {
@@ -507,7 +574,7 @@ class getPosterAPI {
 		// Remove all characters besides letters and numbers
 		$image_name = strtoupper(preg_replace('/[^A-Za-z0-9]/','',$name));
 		// Create the location for the new image
-		$dest_image = 'images/'.$image_name.'.jpg';
+		$dest_image = '../images/'.$image_name.'.jpg';
 		// Use the imagecreatefromjepg() function to set the $orig_img variable to the image
 		$org_img = imagecreatefromjpeg($url);
 		// Get the starting point for the image based off of the width of the image so that the cropped image size is 282px X 400px

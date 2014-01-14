@@ -4,10 +4,15 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
 		<title>Get Show Posters</title>
-		<link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
-		<link href="css/getPoster.css" rel="stylesheet" media="screen">
-		<script src="js/jquery-1.10.2.min.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/bootstrap.min.js" type="text/javascript" charset="utf-8"></script>
+		<link href="./css/bootstrap.min.css" rel="stylesheet" media="screen">
+		<link href="./css/getPoster.css" rel="stylesheet" media="screen">
+		<link href="./css/imdbAutoComplete.css" rel="stylesheet" media="screen">
+		<link href="//code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" rel="stylesheet" media="screen">
+		<script src="http://code.jquery.com/jquery-1.10.2.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="//code.jquery.com/ui/1.10.3/jquery-ui.js" type="text/javascript" charset="utf-8"></script>
+		<script src="./js/bootstrap.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="./js/bootstrap.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="./js/getPoster.js" type="text/javascript" charset="utf-8"></script>
 	</head>
 	<body>
 		<div id="header">
@@ -15,21 +20,22 @@
 		</div>
 		<div id="main">
 			<div id="inputs">
-				<form autocomplete="on" method="post" id="get_show_name">
+
 					<div class="input_field">
 						<label>Name: </label>
-		 				<input type="text" name="show_name" class="field"><br>
+		 				<input type="text" name="show_name" class="field" id="show_name"><br>
 					</div>
 					<div class="input_field">
 						<label>Type: </label>
-		 				<select name="type">
+		 				<select name="type" id="type">
 		 					<?php foreach($types as $type): ?>
-		 						<option value="<?php echo $type; ?>" <?php echo ($type == 19) ? 'selected' : ''; ?>><?php echo array_search($type, $types); ?></option> 
+		 						<option value="<?php echo $type; ?>" <?php echo ($type == null) ? 'selected' : ''; ?>><?php echo array_search($type, $types); ?></option> 
 		 					<?php endforeach; ?>
 		 				</select>
 					</div>
-					<button class="btn btn-primary submit-button" type="submit">Submit</button>
-				</form>
+					<div id="seasons"></div>
+					<button class="btn btn-primary submit-button">Submit</button>
+
 			</div>
 		</div>
 	</body>
