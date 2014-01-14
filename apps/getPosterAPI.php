@@ -290,28 +290,41 @@ class getPosterAPI {
 		$db->query($query);
 	}
 	
-	public function getSeasons($name) {
+	public function getSeasons($name, $type = 'tv') {
 		// Create a new databaseConnection Instance in order to get the database connection info
 		$databaseConnection = databaseConnection::getInstance();
 		// Get the databse connection info
 		$APIKeys = $databaseConnection->getAPIKeys();
-		
-		$json = file_get_contents('https://api.themoviedb.org/3/search/tv?api_key='.$APIKeys['moviedb'].'&query='.urlencode($name));
-		
+		// Get a json object with the results of the search from the moviedb
+		$json = file_get_contents('https://api.themoviedb.org/3/search/'.$type.'?api_key='.$APIKeys['moviedb'].'&query='.urlencode($name));
+		// Get the variables from the json object
 		$search_array = get_object_vars(json_decode($json));
-		
+		// Get the ID of the show from the html object
 		$id = get_object_vars($search_array['results'][0]);
-		
+		// Set the ID variable
 		$id = $id['id'];
-		
-		$json = file_get_contents('https://api.themoviedb.org/3/tv/'.$id.'?api_key='.$APIKeys['moviedb']);
-		
+		$second_url = 'https://api.themoviedb.org/3/'.$type.'/'.$id.'?api_key='.$APIKeys['moviedb'];
+		// Get another json object form the moviedb using the id to get the specific show information
+		$json = file_get_contents('https://api.themoviedb.org/3/'.$type.'/'.$id.'?api_key='.$APIKeys['moviedb']);
+		// Put the results into a php array
 		$show_array = get_object_vars(json_decode($json));
-		
-		$seasons = count($show_array['seasons']);
-		
-		$name = $show_array['name'];
-		
+		// Count the number of seasons the show has
+		if(isset($show_array['seasons'])) {
+			$seasons = count($show_array['seasons']);
+		}
+		else {
+			// If 'seasons' does not exist in the movie then it is a movie
+			$seasons = 1;
+		}
+		// Set the name variable to the returned name to make sure it is 100% correct
+		if($type == 'movie') {
+			// If we are searching for a movie the name comes back as title instead of name
+			$name = $show_array['title'];
+		}
+		else {
+			$name = $show_array['name'];
+		}
+		// Set a return array with the name and the number of seasons
 		$return_values = array(
 			'name' => $name,
 			'seasons' => $seasons
@@ -320,9 +333,10 @@ class getPosterAPI {
 		return $return_values;
 	}
 	
+	// Checks to see if a name contains 'Series' or 'Season'
 	public function checkName($name) {
 		$get_seasons = true;
-	
+		// Do a strstr on the name to see if it contains 'Season' or 'Series' and set the get_seasons variable to false if it does
 		if(strstr($name, 'SEASON') || strstr($name, 'SERIES')) {
 			$get_seasons = false;
 		}

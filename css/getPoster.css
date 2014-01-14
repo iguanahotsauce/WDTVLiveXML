@@ -1,0 +1,75 @@
+body {
+	margin-left: 15px;
+}
+.title h5,
+.percent h5 {
+	float: left;
+}
+.title span,
+.percent span {
+	float: left;
+	font-weight: bold;
+	margin-left: 25px;
+	margin-top: 9px;
+}
+.title,
+.percent {
+	width: 400px;
+	height: 30px;
+	margin-bottom: 10px;
+	margin-left: 20px;
+}
+.percent {
+	margin-bottom: 20px;
+}
+#original_image {
+	float: left;
+}
+#cropped_image {
+	margin-left: 20px;
+	float: left;
+}
+.back-button,
+.submit-button {
+	float: left;
+	clear: both;
+	margin-top: 20px;
+}
+.input_field label {
+	float: left;
+}
+.input_field input {
+	float: right;
+}
+.input_field select {
+	float: right;
+}
+.input_field {
+	width: 250px;
+	margin-bottom: 20px;
+}
+#seasons {
+	clear: both;
+}
+.season_number {
+	width: 100%;
+	height: 40px;
+	padding: 10px 0;
+	font-size: 15px;
+	font-weight: 600;
+	clear: both;
+}
+.season_number span:hover {
+	color: #3276b1;
+	cursor: pointer;
+}
+.season_number:first-child {
+	margin-top: 15px;
+}
+.results {
+	width: 1100px;
+	height: 575px;
+}
+.cursor-wait {
+	cursor: progress !important;
+}
