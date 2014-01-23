@@ -29,6 +29,7 @@ if($_POST['getData']) {
 		$getPoster->addUser($addUser);
 	}
 	
+
 	$hashArray = $getPoster->createHash($name);
 
 	foreach($hashArray as $hash) {
@@ -39,28 +40,30 @@ if($_POST['getData']) {
 				'percent' => $cache_results['percent'],
 				'key' => $cache_results['name'],
 				'image' => $cache_results['image'],
-				'url' => $cache_results['url']
+				'url' => $cache_results['url'],
+				'category' => $cache_results['category']
 				);
 			break;
 		}
 	}
+
 	if(!isset($bestMatchArray)) {
 
 		$urls = $getPoster->getURLs($name, $type);
-		$bestMatchArray = array('percent'=>0,'key'=>null);
-		
-		foreach($urls as $url) {
-			$html = $getPoster->getHTML($urls[0]);
-			$rows = $getPoster->getRows($html);
-			$elements = $getPoster->createElementsArray($rows);
-			$best_match = $getPoster->getBestMatch($elements, $name, $bestMatchArray);
+			
+		// For right now just check the first URL so the load times don't increase
+		//foreach($urls as $url) {
+			$elements = $getPoster->getElements($urls[0]);
+			$best_match = $getPoster->getBestMatch($elements, $name);
 			$bestMatchArray['percent'] = $best_match['percent'];
-			$bestMatchArray['key'] = $best_match['key'];
+			$bestMatchArray['key'] = $best_match['name'];
 			$bestMatchArray['url'] = $best_match['url'];
-		}
+			$bestMatchArray['type'] = $best_match['category'];
+		//}
 
-		$image = $getPoster->createImage($bestMatchArray['url'], $name);
+		$image = $getPoster->createImage($bestMatchArray['url'], $name, $best_match['category']);
 		$bestMatchArray['image'] = 'images/'.$image.'.jpg';
+		
 
 		$data = array(
 			'hash' => $hashArray[0],
@@ -70,12 +73,13 @@ if($_POST['getData']) {
 			'useragent' => $user_agent,
 			'ip' => $ip,
 			'type' => $type,
-			'percent' => $bestMatchArray['percent']
-			);
+			'percent' => $bestMatchArray['percent'],
+			'category' => $bestMatchArray['type']
+		);
 
-		//$getPoster->addData($data);
+		$getPoster->addData($data);
 	 }
-	$bestMatchArray['season_number'] = $_POST['season_number'];
+	$bestMatchArray['season_number'] = $best_match['season_number'];
 	
 	$json = json_encode($bestMatchArray);
 	echo $json;

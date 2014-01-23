@@ -51,7 +51,7 @@ $(document).ready(function() {
 	                    data: {getData: 'true', type: $('#type').val(), season_number: $(this).parent().attr('id'), start_name: $(this).html()}
 	                }).done(function(data) {
 	                	data = jQuery.parseJSON(data);
-	                	var element = $('<div class="results"> \
+						var element = $('<div class="results"> \
 		                    	<div class="title"> \
 									<h5>Title: </h5> \
 									<span>'+data.key+'</span> \
@@ -71,7 +71,7 @@ $(document).ready(function() {
 									</div> \
 								</div> \
 							</div>');
-	                    $('#'+data.season_number).append(element);
+	                    $('#season_'+data.season_number).append(element);
 	                    $('body').removeClass('cursor-wait');
 	                });
                 }

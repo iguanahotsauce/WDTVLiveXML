@@ -6,7 +6,9 @@
 	Updated: 01/10/2014
 */
 
+ini_set('memory_limit','1024M');
 include_once('databaseConnection.php');
+include_once('simple_html_dom.php');
 
 class getPosterAPI {
 	
@@ -230,7 +232,8 @@ class getPosterAPI {
 				'name' => $info['best_match_name'],
 				'image' => 'images/'.$info['image_name'].'.jpg',
 				'url' => $info['best_match_url'],
-				'percent' => $info['percent']
+				'percent' => $info['percent'],
+				'category' => $info['category']
 			);
 		}
 		else {
@@ -260,6 +263,7 @@ class getPosterAPI {
 		$ip = $db->real_escape_string($data['ip']);
 		$type = $db->real_escape_string($data['type']);
 		$percent = $db->real_escape_string($data['percent']);
+		$category = $db->real_escape_string($data['category']);
 
 		// Insert the new hash into the search_results table
 		$query = "
@@ -273,7 +277,8 @@ class getPosterAPI {
 				insert_useragent,
 				insert_ip,
 				type,
-				percent
+				percent,
+				category
 			)
 			VALUES (
 				'$hash',
@@ -283,7 +288,8 @@ class getPosterAPI {
 				'$useragent',
 				'$ip',
 				'$type',
-				'$percent'
+				'$percent',
+				'$category'
 			)
 		";
 		// Run the query
@@ -361,7 +367,7 @@ class getPosterAPI {
 		// Get the alternative name so we can add the URL for that name as well
 		$alternative_name = $this->getAlternativeName($name);
 		//Add the URLs to the array so we can get the HTML from them
-		$urls[] = 'http://www.freecovers.net/search.php?search='.urlencode($name).'&cat='.$type;
+		$urls[] = 'http://www.freecovers.net/search.php?search='.urlencode($name);//.'&cat='.$type;
 		$urls[] = 'http://www.freecovers.net/search.php?search='.urlencode($alternative_name).'&cat='.$type;
 		
 		// Return the array with all of the URLs
@@ -449,142 +455,176 @@ class getPosterAPI {
 		return $alternative_name;
 	}
 	
-	// Gets the HTML from the given URL with cURL
-	public function getHTML($url) {
-		// cURL the URL to get the HTML
-		$page = $this->curl($url);
-		// Call the scrape_between function to get rid of everything that's not between '<div id=\"maincontent\">' and '<td align=\"right\" valign=\"top\"></td>'
-		// Then remove all the unwanted HTML from the start and the end of $page with substr
-		$data = substr(substr(trim($this->scrape_between($page, "<div id=\"maincontent\">", "<td align=\"right\" valign=\"top\"></td>")), 430, -1), 0, -134);
-
-	    return $data;
+	public function GetHTMLObject ($url) {
+		$curl = curl_init();
+		curl_setopt_array($curl, array(
+		    CURLOPT_RETURNTRANSFER => 1,
+		    CURLOPT_URL => $url,
+		    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.08) Gecko/20100914 Firefox/3.6.10',
+		));
+	
+		$resp = curl_exec($curl);
+	
+		curl_close($curl);
+	
+		return str_get_html($resp);
 	}
 	
-	// Takes the HTML and converts it into an array, making each row into an element
-	public function getRows($data) {
-		/// Remove all the unneccessary tags from the HTML
-		$data = str_replace($this->removeFromHTML, '', $data);
-		// Explode on the '</tr>' tags so we can put each row into an array
-		$rows = explode('</tr>', $data);
-		$rowsArray = array();
+	function getElements($url) {
+		
+		$html = $this->GetHTMLObject($url);
+		
+		$table = $html->find('div#maincontent p table tbody tr');
+		
+		$elements = array();
 		$i = 0;
-		foreach($rows as &$row) {
-			$row = trim(strstr($row, '>'));
-			$row = substr($row, 1, -1).'>';
-			$row = $this->removeFirstElement($row);
-			// If $i % 4 == 0 then we are on a row that contains the name of the image
-			// Remove the HTML from before the name then use rstrstr to get all the html before the first '<' which gives us the name
-			if($i  % 4 == 0) {
-				$row = $this->removeFirstElement($row);
-				$row = $this->rstrstr($row,'<');
-			}
-			// If we're not looking a row with a name in it then add '<td>' to the front of the row becasue we stripped it off earlier
-			else {
-				$row = '<td>'.$row;
-			}
-			// If the row doesn't contain '<div class="coverDetailsContainer"' and the length is longer than 10 then insert that row into the array
-			if(!strstr($row, '<div class="coverDetailsContainer"') && strlen($row) > 10) {
-				$rowsArray[] = $row;
-			}
-		    $i++;
-		}
-		
-		for($j=0;$j<count($rowsArray);$j++) {
-			if($j % 2 == 1) {
-				$rowsArray[$j] = $rowsArray[$j-1].$rowsArray[$j];
-				unset($rowsArray[$j-1]);
-			}
-		}
-		
-		return $rowsArray;
-	}
-	
-	// Takes the array of all of the rows and converts it into an array with the show name as the key. Each element contains the name and image link for each image
-	public function createElementsArray($rowsArray) {
-		$elementsArray = array();
-		
-		// Loop through each row and then get specific data from the row to create a new more specific array
-		foreach($rowsArray as &$element) {
-			// Explode each row on the '<td>' element so that we can pull out the specific information
-			$row = explode('<td>',$element);
-			// If the first element of the $row array is empty then move the element from $row[1] to $row[0] and unset $row[1]
-			if($row[0] == '') {
-				$row[0] = $row[1];
-				unset($row[1]);
-			}
-			$covers = array();
-			// Loop through each of the new row elements in order to find the name and the covers that are in that element
-			foreach($row as &$row) {
-				// Remove the '<a>' tags from each element because they are not needed
-				$row = str_replace($this->removeFromRows,'',$row);
-				// Explode each element on '>' to get the specific data
-				$row = explode('>',$row);
-				// If the length of the new $row array is one then that is the name of the show
-				// Set the show name of the title array to this element
-				if (count($row) == 1) {
-					$title = array('Show Name'=>$row[0]);
+		foreach($table as $idx => $t) {
+			if($idx == 0) continue;
+			
+			if($idx > 0) {
+				if($i % 4 == 0) {
+					$name = $t->children(0)->children(0)->plaintext;
+					$category = $t->children(2)->children(0)->plaintext;
+					$links_array = array();
+					foreach($t->children(3)->children(0)->find('a') as $row) {
+						$link_name = $row->plaintext;
+						$href = $row->href;
+						
+						$links_array[$link_name] = $href;
+					}
+					$elements[$name] = array(
+						'Category' => $category,
+						'Links' => $links_array
+					);
 				}
-				// If the length of the new $row array is greater than one then this element contains all of the image links
-				else {
-					// Remove the first 31 characters because they are not needed
-					$link = substr($row[0],31);
-					// Explode on '/' so that we can get the pieces of the url that are needed to create the image url
-					$link = explode('/',$link);
-					// Unset the last element of the link array because it is not needed to build the url for the image
-					unset($link[count($link)-1]);
-					// Build the correct url that links directly to the image
-					$row[0] = 'http://www.freecovers.net/preview/'.implode('/',$link).'/big.jpg';
-					// Set the 'Name of Cover' and the 'Link' in the link array with the new information
-					$link = array('Name of Cover'=>$row[1],'Link'=>$row[0]);
-					// Set 'Covers' in the covers array to the link array
-					$covers['Covers'] = $link;
-				}
+				$i++;
 			}
-			// Add each covers array to the elementsArray with the Show Name as the Key
-			$elementsArray[$title['Show Name']] = $covers;
 		}
 		
-		return $elementsArray;
+		return $elements;
 	}
 	
 	// Gets the best match from the elements array
-	public function getBestMatch($data, $name, $best_match) {
+	public function getBestMatch($data, $name, $best_matches = array(), $percent_match = 90, $custom = false) {
 		// Get the array keys which are the names of the images
 		$keys = array_keys($data);
+		$name = strtoupper(preg_replace('/[^A-Za-z0-9]/','',$name));
 		$i=0;
-		
+		$sampleArray = array();
+		$name_season_number = preg_replace('/[^0-9]/', '', $name);
+
 		// Loop through each element in the array so we can compare the user string to the name and find the best match
-		foreach($data as $row) {
-			// If there are parenthesis in the name then remove everything inside of them so that we can remove the parenthesis as well
-	        $string = preg_replace('/\([^)]*\)/', '', $keys[$i]);
-	        // Remove all of the Revision numbers and dates from the image name
-	        $string = str_replace($this->removeFromName, '', $string);
+ 		foreach($data as $row) {
+ 			$custom_check = false;
+ 			// If there are parenthesis in the name then remove everything inside of them so that we can remove the parenthesis as well
+ 	        $string = strtoupper(preg_replace('/\([^)]*\)/', '', $keys[$i]));
+ 			if(strstr($string, 'CUSTOM')) {
+ 				$string = str_replace('CUSTOM','',$string);
+ 				$custom_check = true;
+ 			}
+ 	        // Remove all of the Revision numbers and dates from the image name
+ 	        $string = strtoupper(preg_replace('/[^A-Za-z0-9]/','',$string));
+ 	        
+ 			$revision_number = substr($string, -1);
+ 			$string = substr($string, 0, -2);
+ 			$season_number = preg_replace('/[^0-9]/', '', $string);
+ 			$season_match = ($name_season_number == $season_number) ? true : false;
 	        // Use the function simalar_text to compare the user string with the image name in order to see how close of a match it is
-	        similar_text(strtoupper($string), strtoupper($name), $percent);
-	        $front_cover = false;
-	        // Loop through each of the covers and check to make sure that the current element we are looking at contains a cover named 'Front'
-	        if(isset($data[$keys[$i]]['Covers'])) {
-		        foreach($data[$keys[$i]]['Covers'] as $cover) {
-		            if(strtoupper($cover) == 'FRONT') {
-		                $front_cover = true;
-		            }
-		        }
-	        }
-	        // If the percent match for the current element is higher than the percent match for the stored element and the current element contains a cover named 'Front'
-	        // then replace the old data in $best_match with the new data because this is a better match
-	        if($percent > $best_match['percent'] && $front_cover) {
-	            $best_match['percent'] = $percent;
-	            $best_match['key'] = $keys[$i];
-	            $best_match['url'] = $data[$keys[$i]]['Covers']['Link'];
-	        }
-		    $i++;
-		}
+ 	        similar_text($string, $name, $percent);
+ 	        $front_cover = false;
+ 	        // Loop through each of the covers and check to make sure that the current element we are looking at contains a cover named 'Front'
+ 	        if(isset($data[$keys[$i]]['Links']['Front'])) {
+ 		    	$front_cover = true;
+ 	        }
+ 			// If custom is set to true then there is a different criteria for the match then if it is set to false
+ 	        if($custom == true) {
+ 		        if($percent > $percent_match && $front_cover && $season_match) {
+ 			       	$best_matches[] = array('name' => $keys[$i], 'percent' => $percent, 'revision' => $revision_number, 'category' => $data[$keys[$i]]['Category'], 'url' => $data[$keys[$i]]['Links']['Front'], 'season_number' => $season_number);
+ 		        }
+ 	        }
+ 	        else {
+ 		        if($percent > $percent_match && $front_cover && !$custom_check && $season_match) {
+ 			       	$best_matches[] = array('name' => $keys[$i], 'percent' => $percent, 'revision' => $revision_number, 'category' => $data[$keys[$i]]['Category'], 'url' => $data[$keys[$i]]['Links']['Front'], 'season_number' => $season_number);
+ 		        }
+ 		    }
+ 		    $i++;
+ 		}
 		
+		// Check to see if there is a match, if not then call the function again with different parameters
+ 		if(!isset($best_matches) || count($best_matches) == 0) {
+ 			if($percent_match > 80) {
+ 		 		$best_matches = $this->getBestMatch($data, $name, $best_matches, 80, false);
+ 		 	}
+ 		 	if(count($best_matches) == 0){
+ 		 		$best_matches = $this->getBestMatch($data, $name, $best_matches, 90, true);
+ 		 	}
+ 		}
+
+ 		// Set percent equal to 0 so the first element in the array overwrites the current $best_match value
+ 		$best_match = array('percent' => 0);
+ 		$perfect_match = array();
+ 		// Loop through each pf the best matches to find the one with the highest percent match
+ 		foreach($best_matches as $match) {
+	 		if($match['percent'] > $best_match['percent']) {
+		 		$best_match = $match;
+	 		}
+	 		// If there are multiple matches that are a 100% match then add them to the perfect_match array
+	 		else if($match['percent'] == 100) {
+		 		$perfect_match[] = $match;
+	 		}
+ 		}	
+ 		// If the count of the perfect match array != 0 then that means there are multiple perfect matches
+ 		if(count($perfect_match) != 0) {
+ 			// Add the best match to the perfect_match array because it is a perfect match
+ 			$perfect_match[] = $best_match;
+ 			// Set the highest revision to 0 so the first element in the perfect_match array overwrites it
+ 			$highest_revision = 0;
+ 			// Loop through each of the elements in the perfect match array to find the element with the highest revision number
+ 			foreach($perfect_match as $match) {
+	 			if($match['revision'] > $highest_revision) {
+		 			$highest_revision = $match['revision'];
+	 			}
+ 			}
+ 			$final_matches = array();
+ 			// Loop through the perfect match array again and add all of the elements that have the highest revision to the final_matches array
+ 			foreach($perfect_match as $match) {
+	 			if($match['revision'] == $highest_revision) {
+		 			$final_matches[] = $match;
+	 			}
+ 			}
+ 			// Loop through the final_matches array to see if one of the elements is not a Blu-Ray
+ 			if(count($final_matches) > 1) {
+ 				$best_match = array();
+	 			foreach($final_matches as $match) {
+		 			if(strtoupper($match['category']) == 'TV SERIES') {
+			 			$best_match = $match;
+			 			break;
+		 			}
+	 			}
+	 			if(count($best_match) == 0) {
+		 			$best_match = $final_matches[0];
+	 			}
+ 			}
+ 		}
+
+ 		// Create the image url
+ 		$url = explode('/view',$best_match['url']);
+ 		$url = explode('/', $url[1]);
+ 		$best_match['url'] = 'http://www.freecovers.net/preview/'.$url[1].'/'.$url[2].'/big.jpg';
+
 		return $best_match;
+		
 	}
 	
 	// Takes a cover art image and crops it to be only the front of the cover art
-	public function createImage($url, $name) {
+	public function createImage($url, $name, $type = 'DVD') {
+		// If the image is of a Blu-Ray cover then it is wider than a normal DVD cover so set the width accordingly
+		if($type == 'Blu-Ray Movie') {
+			$width = 344;
+		}
+		else {
+			$width = 282;
+		}
 		// Remove all characters besides letters and numbers
 		$image_name = strtoupper(preg_replace('/[^A-Za-z0-9]/','',$name));
 		// Create the location for the new image
@@ -592,11 +632,11 @@ class getPosterAPI {
 		// Use the imagecreatefromjepg() function to set the $orig_img variable to the image
 		$org_img = imagecreatefromjpeg($url);
 		// Get the starting point for the image based off of the width of the image so that the cropped image size is 282px X 400px
-		$start_x = imagesx($org_img)-282; 
+		$start_x = imagesx($org_img)-$width; 
 		// Create the new image with the correct dimensions
-		$image = imagecreatetruecolor('282','400');
+		$image = imagecreatetruecolor($width,'400');
 		// Crop the old image to the new size and copy it to the new image
-		imagecopy($image,$org_img, 0, 0, $start_x, 0, 282, 400);
+		imagecopy($image,$org_img, 0, 0, $start_x, 0, $width, 400);
 		// Create a jpeg file from the new image
 		imagejpeg($image,$dest_image,90);
 		// Destroy $image because it is no longer needed
@@ -605,40 +645,9 @@ class getPosterAPI {
 		return $image_name;
 	}
 	
-	// Site Scraper by Jacob Ward
-	// Defining the basic scraping function
-	public function scrape_between($data, $start, $end){
-	    $data = stristr($data, $start); // Stripping all data from before $start
-	    $data = substr($data, strlen($start));  // Stripping $start
-	    $stop = stripos($data, $end);   // Getting the position of the $end of the data to scrape
-	    $data = substr($data, 0, $stop);    // Stripping all data from after and including the $end of the data to scrape
-	    return $data;   // Returning the scraped data from the function
-	}
-	
 	public function removeFirstElement($element) {
 		$data = strstr($element, '>');
 		$data = substr($data, 1);
 		return $data;
 	}
-	
-	public function curl($url) {
-	    // Assigning cURL options to an array
-	    $options = Array(
-	        CURLOPT_RETURNTRANSFER => TRUE,  // Setting cURL's option to return the webpage data
-	        CURLOPT_FOLLOWLOCATION => TRUE,  // Setting cURL to follow 'location' HTTP headers
-	        CURLOPT_AUTOREFERER => TRUE, // Automatically set the referer where following 'location' HTTP headers
-	        CURLOPT_CONNECTTIMEOUT => 120,   // Setting the amount of time (in seconds) before the request times out
-	        CURLOPT_TIMEOUT => 120,  // Setting the maximum amount of time for cURL to execute queries
-	        CURLOPT_MAXREDIRS => 10, // Setting the maximum number of redirections to follow
-	        CURLOPT_USERAGENT => "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1a2pre) Gecko/2008073000 Shredder/3.0a2pre ThunderBrowse/3.2.1.8",  // Setting the useragent
-	        CURLOPT_URL => $url, // Setting cURL's URL option with the $url variable passed into the function
-	    );
-	     
-	    $ch = curl_init();  // Initialising cURL 
-	    curl_setopt_array($ch, $options);   // Setting cURL's options using the previously assigned array data in $options
-	    $data = curl_exec($ch); // Executing the cURL request and assigning the returned data to the $data variable
-	    curl_close($ch);    // Closing cURL 
-	    return $data;   // Returning the data from the function 
-	}
-	
 }
