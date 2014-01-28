@@ -1,9 +1,6 @@
 <?php
 include_once ('getPosterAPI.php');
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 $getPoster = getPosterAPI::getInstance();
 
 if($_POST['name']) {
@@ -16,12 +13,15 @@ if($_POST['name']) {
 			$type = 'movie';
 		}
 		$seasons = $getPoster->getSeasons($name, $type);
-		if($seasons['seasons'] != 1) {
-			$seasons['urlencode'] = urlencode($seasons['name'].' Season ');
+		if(strtoupper($seasons['type']) == 'TV') {
+			if($seasons['seasons'] != 1) {
+				$seasons['urlencode'] = urlencode($seasons['name'].' Season ');
+			}
+			else {
+				$seasons['urlencode'] = urlencode($seasons['name']);
+			}
 		}
-		else {
-			$seasons['urlencode'] = urlencode($seasons['name']);
-		}
+		$seasons['selected_button'] = $_POST['selected_button'];
 		$seasons_json = json_encode($seasons);
 		echo $seasons_json;
 		exit;

@@ -25,23 +25,24 @@ class getPosterAPI {
 	public $best_match = array('percent'=>0,'key'=>null);
 	
 	// Search Types
+	// For now just show TV Series and Movie
 	public $types = array(
-		'All' => null,
-		'Anime DVD' => 22,
-		'Blu-Ray Movie' => 20,
-		'DVD Movie' => 1,
-		'HD-DVD Movie' => 21,
-		'Music CD' => 4,
-		'Music DVD' => 11,
-		'Other' => 10,
-		'PC Apps' => 6,
-		'PC Games' => 5,
-		'Playstation 3' => 13,
-		'PSP' => 15,
-		'Soundtrack' => 18,
+		//'All' => null,
+		//'Anime DVD' => 22,
+		//'Blu-Ray Movie' => 20,
+		'Movie' => 1,
+		//'HD-DVD Movie' => 21,
+		//'Music CD' => 4,
+		//'Music DVD' => 11,
+		//'Other' => 10,
+		//'PC Apps' => 6,
+		//'PC Games' => 5,
+		//'Playstation 3' => 13,
+		//'PSP' => 15,
+		//'Soundtrack' => 18,
 		'TV Series' => 19,
-		'Wii' => 17,
-		'Xbox 360' => 12
+		//'Wii' => 17,
+		//'Xbox 360' => 12
 	);
 	
 	public $widths = array(
@@ -120,7 +121,7 @@ class getPosterAPI {
 		return self::$instance;
 	}
 	
-	public function addpageView($ip, $useragent) {
+	public function addPageView($ip, $useragent) {
 		// Create a new databaseConnection Instance in order to get the database connection info
 		$databaseConnection = databaseConnection::getInstance();
 		// Get the databse connection info
@@ -128,24 +129,55 @@ class getPosterAPI {
 		// Connect to the database with mysqli
 		$db = new mysqli($databaseInfo['host'], $databaseInfo['username'], $databaseInfo['password'], $databaseInfo['db']);
 		
+		$locationData = $this->ipToLocation($ip);
+		
 		$ip = $db->real_escape_string($ip);
 		$useragent = $db->real_escape_string($useragent);
-
+		$country = $db->real_escape_string($locationData['countryCode']);
+		$state = $db->real_escape_string($locationData['region']);
+		$city = $db->real_escape_string($locationData['city']);
+		$lat = $db->real_escape_string($locationData['latitude']);
+		$lon = $db->real_escape_string($locationData['longitude']);
+		
 		// Insert the new user into the Users table
 		$query = "
 			INSERT INTO
 				site_hits
 			(
 				ip,
-				useragent
+				useragent,
+				country,
+				state,
+				city,
+				latitude,
+				longitude
 			)
 			VALUES (
 				'$ip',
-				'$useragent'
+				'$useragent',
+				'$country',
+				'$state',
+				'$city',
+				'$lat',
+				'$lon'
 			)
 		";
 		// Run the query
 		$db->query($query);
+	}
+	
+	public function ipToLocation($ip) {
+		// Create a new databaseConnection Instance in order to get the database connection info
+		$databaseConnection = databaseConnection::getInstance();
+		// Get the databse connection info
+		$databaseInfo = $databaseConnection->getAPIKeys();
+
+		$user = $databaseInfo['locatorhq']['user'];
+		$key = $databaseInfo['locatorhq']['key'];
+		
+		$locationData = json_decode(file_get_contents('http://api.locatorhq.com/?key='.$key.'&user='.$user.'&format=json&ip='.$ip), true);
+		
+		return $locationData;
 	}
 	
 	public function addUser($data) {
@@ -320,7 +352,7 @@ class getPosterAPI {
 		}
 		else {
 			// If 'seasons' does not exist in the movie then it is a movie
-			$seasons = 1;
+			$seasons = 0;
 		}
 		// Set the name variable to the returned name to make sure it is 100% correct
 		if($type == 'movie') {
@@ -333,7 +365,8 @@ class getPosterAPI {
 		// Set a return array with the name and the number of seasons
 		$return_values = array(
 			'name' => $name,
-			'seasons' => $seasons
+			'seasons' => $seasons,
+			'type' => $type
 		);
 		
 		return $return_values;

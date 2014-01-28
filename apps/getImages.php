@@ -41,7 +41,7 @@ if($_POST['getData']) {
 				'key' => $cache_results['name'],
 				'image' => $cache_results['image'],
 				'url' => $cache_results['url'],
-				'category' => $cache_results['category']
+				'type' => $cache_results['category']
 				);
 			break;
 		}
@@ -78,8 +78,13 @@ if($_POST['getData']) {
 		);
 
 		$getPoster->addData($data);
-	 }
-	$bestMatchArray['season_number'] = $best_match['season_number'];
+	}
+	if(strtoupper($bestMatchArray['type']) == 'DVD MOVIE') {
+		$bestMatchArray['season_number'] = 0;
+	}
+	else {
+		$bestMatchArray['season_number'] = $best_match['season_number'];
+	}
 	
 	$json = json_encode($bestMatchArray);
 	echo $json;

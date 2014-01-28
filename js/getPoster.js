@@ -1,4 +1,5 @@
 $(document).ready(function() {
+	$('.btn').button()
     $("#show_name").focus();
     $("#show_name").autocomplete({
         minLength: 0,
@@ -25,20 +26,32 @@ $(document).ready(function() {
     }
     $('.submit-button').click(function() {
     	$('body').addClass('cursor-wait');
+    	var selected_button = null;
+    	$('.btn').children().each(function() {
+    		if($(this).parent().hasClass('active')) {
+		    	selected_button = $(this).attr('value');
+		    }
+	    });
 	    $.ajax({
 		    type: 'POST',
 		    url: '../apps/getShowInfo.php',
-		    data: { name: $('#show_name').val(), type: $('#type').val()}
+		    data: { name: $('#show_name').val(), type: $('#type').val(), selected_button: selected_button}
 	    }).done(function(data) {
 	    	data = jQuery.parseJSON(data);
-		    var container = $('<div id="season_list"></div>');
-		    for(var i=1;i<=data.seasons;i++) {
-			    container.append($('<div class="season_number" id="season_'+i+'" value="'+data.urlencode+i+'"><span class="season_name">'+data.name+' Season '+i+'</span></div>'));
+		    if(data.seasons != 0) {
+		    	var container = $('<div id="season_list"></div>');
+			    for(var i=1;i<=data.seasons;i++) {
+				    container.append($('<div class="season_number item" id="season_'+i+'" value="'+data.urlencode+i+'"><span class="name">'+data.name+' Season '+i+'</span></div>'));
+			    }
+		    }
+		    else {
+		    	var container = $('<div id="movie_container"></div>');
+			    container.append($('<div class="movie item" id="season_0" value="'+data.urlencode+i+'"><span class="name">'+data.name+'</span></div>'));
 		    }
 		    $('#seasons').empty();
 		    $('#seasons').append(container);
 		    $('body').removeClass('cursor-wait');
-            $('.season_number').children('.season_name').click(function() {
+            $('.item').children('.name').click(function() {
             	if($(this).parent().hasClass('loaded')) {
 	            	$(this).parent().children('.results').toggle();
             	}

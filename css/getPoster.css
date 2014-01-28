@@ -45,13 +45,15 @@ body {
 	float: right;
 }
 .input_field {
-	width: 250px;
+	width: 270px;
 	margin-bottom: 20px;
+	height: 30px;
 }
 #seasons {
 	clear: both;
 }
-.season_number {
+.season_number,
+.movie {
 	width: 100%;
 	height: 40px;
 	padding: 10px 0;
@@ -59,11 +61,13 @@ body {
 	font-weight: 600;
 	clear: both;
 }
-.season_number span:hover {
+.season_number span:hover,
+.movie span:hover {
 	color: #3276b1;
 	cursor: pointer;
 }
-.season_number:first-child {
+.season_number:first-child,
+.movie {
 	margin-top: 15px;
 }
 .results {

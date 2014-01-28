@@ -20,22 +20,33 @@
 		</div>
 		<div id="main">
 			<div id="inputs">
-
-					<div class="input_field">
-						<label>Name: </label>
-		 				<input type="text" name="show_name" class="field" id="show_name"><br>
+				<div class="input_field">
+					<label>Name: </label>
+	 				<input type="text" name="show_name" class="field" id="show_name"><br>
+				</div>
+				<div class="input_field">
+					<label>Type: </label>
+	 				<select name="type" id="type">
+	 					<?php foreach($types as $type): ?>
+	 						<option value="<?php echo $type; ?>" <?php echo ($type == null) ? 'selected' : ''; ?>><?php echo array_search($type, $types); ?></option> 
+	 					<?php endforeach; ?>
+	 				</select>
+				</div>
+				<div class="input_field">
+					<div class="btn-group" data-toggle="buttons">
+						<label class="btn btn-primary">
+					    	<input type="radio" name="options" value="dvd"> DVD
+						</label>
+						<label class="btn btn-primary">
+					    	<input type="radio" name="options" value="blu-ray"> Blu-Ray
+						</label>
+						<label class="btn btn-primary">
+					    	<input type="radio" name="options" value="both"> Both
+						</label>
 					</div>
-					<div class="input_field">
-						<label>Type: </label>
-		 				<select name="type" id="type">
-		 					<?php foreach($types as $type): ?>
-		 						<option value="<?php echo $type; ?>" <?php echo ($type == null) ? 'selected' : ''; ?>><?php echo array_search($type, $types); ?></option> 
-		 					<?php endforeach; ?>
-		 				</select>
-					</div>
-					<div id="seasons"></div>
-					<button class="btn btn-primary submit-button">Submit</button>
-
+				</div>
+				<div id="seasons"></div>
+				<button class="btn btn-primary submit-button">Submit</button>
 			</div>
 		</div>
 	</body>
